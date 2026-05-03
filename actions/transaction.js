@@ -14,37 +14,42 @@ const serializeAmount = (obj) => ({
   amount: obj.amount.toNumber(),
 });
 
+// Helper function to centralize Arcjet protection
+async function checkArcjet(userId) {
+  const req = await request();
+  
+  // Check rate limit
+  const decision = await aj.protect(req, {
+    userId,
+    requested: 1, // Specify how many tokens to consume
+  });
+
+  if (decision.isDenied()) {
+    if (decision.reason.isRateLimit()) {
+      const { remaining, reset } = decision.reason;
+      console.error({
+        code: "RATE_LIMIT_EXCEEDED",
+        details: {
+          remaining,
+          resetInSeconds: reset,
+        },
+      });
+
+      throw new Error("Too many requests. Please try again later.");
+    }
+
+    throw new Error("Request blocked");
+  }
+}
+
 // Create Transaction
 export async function createTransaction(data) {
   try {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    // Get request data for ArcJet
-    const req = await request();
-
-    // Check rate limit
-    const decision = await aj.protect(req, {
-      userId,
-      requested: 1, // Specify how many tokens to consume
-    });
-
-    if (decision.isDenied()) {
-      if (decision.reason.isRateLimit()) {
-        const { remaining, reset } = decision.reason;
-        console.error({
-          code: "RATE_LIMIT_EXCEEDED",
-          details: {
-            remaining,
-            resetInSeconds: reset,
-          },
-        });
-
-        throw new Error("Too many requests. Please try again later.");
-      }
-
-      throw new Error("Request blocked");
-    }
+    // Run Arcjet protection
+    await checkArcjet(userId);
 
     const user = await db.user.findUnique({
       where: { clerkUserId: userId },
@@ -99,9 +104,13 @@ export async function createTransaction(data) {
   }
 }
 
+// Get Transaction
 export async function getTransaction(id) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
+
+  // Run Arcjet protection
+  await checkArcjet(userId);
 
   const user = await db.user.findUnique({
     where: { clerkUserId: userId },
@@ -121,10 +130,14 @@ export async function getTransaction(id) {
   return serializeAmount(transaction);
 }
 
+// Update Transaction
 export async function updateTransaction(id, data) {
   try {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
+
+    // Run Arcjet protection
+    await checkArcjet(userId);
 
     const user = await db.user.findUnique({
       where: { clerkUserId: userId },
@@ -200,6 +213,9 @@ export async function getUserTransactions(query = {}) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
+    // Run Arcjet protection
+    await checkArcjet(userId);
+
     const user = await db.user.findUnique({
       where: { clerkUserId: userId },
     });
@@ -230,6 +246,13 @@ export async function getUserTransactions(query = {}) {
 // Scan Receipt
 export async function scanReceipt(file) {
   try {
+    // Added auth check to ensure bots can't spam your Gemini API
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    // Run Arcjet protection
+    await checkArcjet(userId);
+
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Convert File to ArrayBuffer

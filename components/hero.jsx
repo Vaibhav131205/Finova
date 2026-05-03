@@ -48,7 +48,7 @@ const HeroSection = () => {
             </div>
             <div className="hero-image-wrapper">
                 <div ref={imageRef} className="hero-image">
-                    <Image src="/banner.jpeg" width={1280} height={720} alt="Dashboard Preview"
+                    <Image src="/finova-banner.jpeg" width={1280} height={720} alt="Dashboard Preview"
                     priority className="rounded-lg shadow-2xl border mx-auto"/>
                 </div>
             </div>

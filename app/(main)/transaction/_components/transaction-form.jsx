@@ -120,9 +120,11 @@ export function AddTransactionForm({
     }
   }, [transactionResult, transactionLoading, editMode]);
 
+  /* eslint-disable react-hooks/incompatible-library */
   const type = watch("type");
   const isRecurring = watch("isRecurring");
   const date = watch("date");
+  /* eslint-enable react-hooks/incompatible-library */
 
   const filteredCategories = categories.filter(
     (category) => category.type === type

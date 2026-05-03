@@ -107,6 +107,7 @@ export function CreateAccountDrawer({ children }) {
               </label>
               <Select
                 onValueChange={(value) => setValue("type", value)}
+                // eslint-disable-next-line react-hooks/incompatible-library
                 defaultValue={watch("type")}
               >
                 <SelectTrigger id="type">
